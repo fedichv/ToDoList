@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcworkspace
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+
+# SwiftPM
+.build/
+.swiftpm/xcode/package.xcworkspace
+
+# Logs
+*.log
+
+# Generated
+*.hmap
+*.ipa
+
+# CocoaPods 
+
+# Carthage
+Carthage/
+
+# SPM
+Package.resolved
+
+# Xcode Preview
+*.preview-thumbnails
+
+# Xcode Scheme Management
+xcshareddata/WorkspaceSettings.xcsettings
+
+# CoreData auto-generated files
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# User files
+*.swp
+*.lock
