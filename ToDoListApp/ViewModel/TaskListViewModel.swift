@@ -146,7 +146,6 @@ final class TaskListViewModel {
                         let existingTasks = try context.fetch(fetchRequest)
                         
                         if let existingTask = existingTasks.first {
-                            // Update existing task if needed
                             existingTask.details = existingTask.details ?? nil
                             existingTask.createdAt = existingTask.createdAt ?? Date()
                         } else {
