@@ -1,13 +1,27 @@
 import UIKit
 
+// MARK: - Protocol
+
+protocol TaskCellDelegate: AnyObject {
+    func didTapCheckmark(for task: ToDoTask)
+    func didRequestEdit(for task: ToDoTask)
+    func didRequestShare(for task: ToDoTask)
+    func didRequestDelete(for task: ToDoTask)
+}
+
+// MARK: - TaskCell
+
 final class TaskCell: UITableViewCell {
+
+    weak var delegate: TaskCellDelegate?
+    private var currentTask: ToDoTask?
 
     // MARK: - UI Elements
 
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.font = .systemFont(ofSize: 16, weight: .medium)
-        label.numberOfLines = 2
+        label.numberOfLines = 1
         return label
     }()
 
@@ -31,6 +45,7 @@ final class TaskCell: UITableViewCell {
         imageView.tintColor = .systemYellow
         imageView.contentMode = .scaleAspectFit
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.isUserInteractionEnabled = true
         return imageView
     }()
 
@@ -48,6 +63,8 @@ final class TaskCell: UITableViewCell {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupView()
         setupConstraints()
+        setupContextMenu()
+        selectionStyle = .none
     }
 
     required init?(coder: NSCoder) {
@@ -63,6 +80,9 @@ final class TaskCell: UITableViewCell {
         stackView.addArrangedSubview(titleLabel)
         stackView.addArrangedSubview(subtitleLabel)
         stackView.addArrangedSubview(dateLabel)
+
+        let tap = UITapGestureRecognizer(target: self, action: #selector(didTapCheckmark))
+        checkmarkView.addGestureRecognizer(tap)
     }
 
     private func setupConstraints() {
@@ -79,9 +99,22 @@ final class TaskCell: UITableViewCell {
         ])
     }
 
+    private func setupContextMenu() {
+        let contextInteraction = UIContextMenuInteraction(delegate: self)
+        contentView.addInteraction(contextInteraction)
+    }
+
+    // MARK: - Actions
+
+    @objc private func didTapCheckmark() {
+        guard let task = currentTask else { return }
+        delegate?.didTapCheckmark(for: task)
+    }
+
     // MARK: - Configure Cell
 
     func configure(with task: ToDoTask) {
+        currentTask = task
         configureTitle(task)
         configureSubtitle(task)
         configureDate(task)
@@ -122,5 +155,30 @@ final class TaskCell: UITableViewCell {
         checkmarkView.image = task.isCompleted
             ? UIImage(systemName: "checkmark.circle")
             : UIImage(systemName: "circle")
+    }
+}
+
+// MARK: - UIContextMenuInteractionDelegate
+
+extension TaskCell: UIContextMenuInteractionDelegate {
+
+    func contextMenuInteraction(_ interaction: UIContextMenuInteraction,
+                                configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+        guard let task = currentTask else { return nil }
+
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
+
+            let editAction = UIAction(title: "Редактировать", image: UIImage(systemName: "pencil")) { [weak self] _ in
+                self?.delegate?.didRequestEdit(for: task)
+            }
+            let shareAction = UIAction(title: "Поделиться", image: UIImage(systemName: "square.and.arrow.up")) { [weak self] _ in
+                self?.delegate?.didRequestShare(for: task)
+            }
+            let deleteAction = UIAction(title: "Удалить", image: UIImage(systemName: "trash"), attributes: .destructive) { [weak self] _ in
+                self?.delegate?.didRequestDelete(for: task)
+            }
+
+            return UIMenu(title: "", children: [editAction, shareAction, deleteAction])
+        }
     }
 }

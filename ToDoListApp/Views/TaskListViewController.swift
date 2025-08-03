@@ -1,6 +1,24 @@
 import UIKit
 
-final class TaskListViewController: UIViewController, UISearchResultsUpdating {
+// MARK: - Constants
+
+private extension TaskListViewController {
+    enum Constants {
+        static let countLabelFontSize: CGFloat = 14
+        static let countLabelHeight: CGFloat = 20
+        static let countLabelBottomInset: CGFloat = -20
+        static let countLabelLeadingInset: CGFloat = 16
+        static let countLabelTrailingSpacing: CGFloat = -8
+        static let addButtonTrailingInset: CGFloat = -24
+        static let addButtonSize: CGFloat = 56
+        static let tableViewBottomSpacing: CGFloat = -8
+        static let addButtonIconSize: CGFloat = 22
+    }
+}
+
+// MARK: - TaskListViewController
+
+final class TaskListViewController: UIViewController {
 
     private let viewModel = TaskListViewModel()
 
@@ -8,7 +26,7 @@ final class TaskListViewController: UIViewController, UISearchResultsUpdating {
 
     private let countLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 14)
+        label.font = .systemFont(ofSize: Constants.countLabelFontSize)
         label.textColor = .secondaryLabel
         label.textAlignment = .center
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -24,7 +42,7 @@ final class TaskListViewController: UIViewController, UISearchResultsUpdating {
 
     private let floatingAddButton: UIButton = {
         let button = UIButton(type: .system)
-        let config = UIImage.SymbolConfiguration(pointSize: 22, weight: .bold)
+        let config = UIImage.SymbolConfiguration(pointSize: Constants.addButtonIconSize, weight: .bold)
         let image = UIImage(systemName: "square.and.pencil", withConfiguration: config)
         button.setImage(image, for: .normal)
         button.tintColor = .systemYellow
@@ -43,25 +61,22 @@ final class TaskListViewController: UIViewController, UISearchResultsUpdating {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
         setupView()
         setupNavigation()
         setupTableView()
         setupBindings()
         setupGestureRecognizers()
-
         viewModel.loadAndSaveTodosFromNetwork()
         updateCountLabel()
     }
 
-    // MARK: - Setup Methods
+    // MARK: - Setup
 
     private func setupView() {
         view.backgroundColor = .systemBackground
         view.addSubview(tableView)
         view.addSubview(countLabel)
         view.addSubview(floatingAddButton)
-
         setupConstraints()
         floatingAddButton.addTarget(self, action: #selector(didTapAdd), for: .touchUpInside)
     }
@@ -70,7 +85,6 @@ final class TaskListViewController: UIViewController, UISearchResultsUpdating {
         title = "Задачи"
         navigationItem.largeTitleDisplayMode = .always
         navigationController?.navigationBar.prefersLargeTitles = true
-
         navigationItem.searchController = searchController
         searchController.searchResultsUpdater = self
         definesPresentationContext = true
@@ -104,81 +118,57 @@ final class TaskListViewController: UIViewController, UISearchResultsUpdating {
             tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.bottomAnchor.constraint(equalTo: countLabel.topAnchor, constant: -8),
+            tableView.bottomAnchor.constraint(equalTo: countLabel.topAnchor, constant: Constants.tableViewBottomSpacing),
 
-            countLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            countLabel.trailingAnchor.constraint(equalTo: floatingAddButton.leadingAnchor, constant: -8),
-            countLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
-            countLabel.heightAnchor.constraint(equalToConstant: 20),
+            countLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.countLabelLeadingInset),
+            countLabel.trailingAnchor.constraint(equalTo: floatingAddButton.leadingAnchor, constant: Constants.countLabelTrailingSpacing),
+            countLabel.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: Constants.countLabelBottomInset),
+            countLabel.heightAnchor.constraint(equalToConstant: Constants.countLabelHeight),
 
-            floatingAddButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24),
+            floatingAddButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: Constants.addButtonTrailingInset),
             floatingAddButton.centerYAnchor.constraint(equalTo: countLabel.centerYAnchor),
-            floatingAddButton.widthAnchor.constraint(equalToConstant: 56),
-            floatingAddButton.heightAnchor.constraint(equalToConstant: 56)
+            floatingAddButton.widthAnchor.constraint(equalToConstant: Constants.addButtonSize),
+            floatingAddButton.heightAnchor.constraint(equalToConstant: Constants.addButtonSize)
         ])
     }
 
-    // MARK: - Helper Methods
+    // MARK: - Helpers
 
     private func updateCountLabel() {
         let count = viewModel.isSearching ? viewModel.filteredTasks.count : viewModel.tasks.count
         countLabel.text = "\(count) Задач"
     }
 
-    private func showEditDialog(for task: ToDoTask) {
-        let alert = UIAlertController(title: "Редактировать", message: nil, preferredStyle: .alert)
-        alert.addTextField { $0.text = task.title }
-        alert.addTextField { $0.text = task.details }
-
-        alert.addAction(UIAlertAction(title: "Сохранить", style: .default) { [weak self] _ in
-            guard let title = alert.textFields?[0].text, !title.isEmpty else { return }
-            let details = alert.textFields?[1].text
-            task.title = title
-            task.details = details
-            PersistenceManager.shared.saveContext(context: PersistenceManager.shared.mainContext)
-            self?.viewModel.loadTasks()
-        })
-
-        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-        present(alert, animated: true)
-    }
-
     // MARK: - Actions
 
     @objc private func didTapAdd() {
-        let alert = UIAlertController(title: "Новая задача", message: "Введите название", preferredStyle: .alert)
-        alert.addTextField { $0.placeholder = "Название" }
-        alert.addTextField { $0.placeholder = "Описание (необязательно)" }
-
-        let createAction = UIAlertAction(title: "Создать", style: .default) { [weak self] _ in
-            guard let title = alert.textFields?[0].text, !title.isEmpty else { return }
-            let details = alert.textFields?[1].text
+        let editorVC = TaskDetailViewController(task: nil)
+        editorVC.onSave = { [weak self] title, details in
             self?.viewModel.createTask(title: title, details: details)
         }
-
-        alert.addAction(createAction)
-        alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
-        present(alert, animated: true)
+        navigationController?.pushViewController(editorVC, animated: true)
     }
 
     @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
         let location = gesture.location(in: tableView)
-
         guard gesture.state == .began,
               let indexPath = tableView.indexPathForRow(at: location),
-              let task = viewModel.task(at: indexPath.row)
-        else { return }
+              let cell = tableView.cellForRow(at: indexPath),
+              let task = viewModel.task(at: indexPath.row) else { return }
+        cell.setSelected(false, animated: false)
 
+        presentOptionsAlert(for: task)
+    }
+
+    private func presentOptionsAlert(for task: ToDoTask) {
         let alert = UIAlertController(title: task.title, message: nil, preferredStyle: .actionSheet)
 
         alert.addAction(UIAlertAction(title: "Редактировать", style: .default) { [weak self] _ in
-            self?.showEditDialog(for: task)
+            self?.editTask(task)
         })
 
         alert.addAction(UIAlertAction(title: "Поделиться", style: .default) { [weak self] _ in
-            let text = "\(task.title ?? "")\n\n\(task.details ?? "")"
-            let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-            self?.present(activityVC, animated: true)
+            self?.shareTask(task)
         })
 
         alert.addAction(UIAlertAction(title: "Удалить", style: .destructive) { [weak self] _ in
@@ -186,11 +176,31 @@ final class TaskListViewController: UIViewController, UISearchResultsUpdating {
         })
 
         alert.addAction(UIAlertAction(title: "Отмена", style: .cancel))
+
         present(alert, animated: true)
     }
 
-    // MARK: - UISearchResultsUpdating
+    private func editTask(_ task: ToDoTask) {
+        let editorVC = TaskDetailViewController(task: task)
+        editorVC.onSave = { [weak self] title, details in
+            task.title = title
+            task.details = details
+            PersistenceManager.shared.saveContext(context: PersistenceManager.shared.mainContext)
+            self?.viewModel.loadTasks()
+        }
+        navigationController?.pushViewController(editorVC, animated: true)
+    }
 
+    private func shareTask(_ task: ToDoTask) {
+        let text = "\(task.title ?? "")\n\n\(task.details ?? "")"
+        let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
+        present(activityVC, animated: true)
+    }
+}
+
+// MARK: - UISearchResultsUpdating
+
+extension TaskListViewController: UISearchResultsUpdating {
     func updateSearchResults(for searchController: UISearchController) {
         guard let query = searchController.searchBar.text else { return }
         viewModel.updateSearchResults(query: query)
@@ -211,11 +221,36 @@ extension TaskListViewController: UITableViewDataSource, UITableViewDelegate {
             return UITableViewCell()
         }
         cell.configure(with: task)
+        cell.delegate = self
         return cell
     }
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let task = viewModel.isSearching ? viewModel.filteredTasks[indexPath.row] : viewModel.tasks[indexPath.row]
+        editTask(task)
+    }
+}
+
+// MARK: - TaskCellDelegate
+
+extension TaskListViewController: TaskCellDelegate {
+    func didTapCheckmark(for task: ToDoTask) {
+        viewModel.toggleCompleted(task)
+    }
+
+    func didRequestEdit(for task: ToDoTask) {
+        editTask(task)
+    }
+
+    func didRequestShare(for task: ToDoTask) {
+        shareTask(task)
+    }
+
+    func didRequestDelete(for task: ToDoTask) {
+        viewModel.deleteTask(task)
+    }
+
+    func didToggleComplete(for task: ToDoTask) {
         viewModel.toggleCompleted(task)
     }
 }
